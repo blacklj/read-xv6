@@ -38,11 +38,11 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
   pde_t *pde;
   pte_t *pgtab;
 
-  pde = &pgdir[PDX(va)];
-  if(*pde & PTE_P){
-    pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
+  pde = &pgdir[PDX(va)]; // 找到va所在的页表
+  if(*pde & PTE_P){ // 如果页表已经存在
+    pgtab = (pte_t*)P2V(PTE_ADDR(*pde)); // 页表地址
   } else {
-    if(!alloc || (pgtab = (pte_t*)kalloc()) == 0)
+    if(!alloc || (pgtab = (pte_t*)kalloc()) == 0) // 为页表分配内存
       return 0;
     // Make sure all those PTE_P bits are zero.
     memset(pgtab, 0, PGSIZE);
@@ -51,7 +51,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
     // entries, if necessary.
     *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
   }
-  return &pgtab[PTX(va)];
+  return &pgtab[PTX(va)]; // 返回va所在的页表项的地址
 }
 
 // Create PTEs for virtual addresses starting at va that refer to
@@ -64,14 +64,14 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
   pte_t *pte;
 
   a = (char*)PGROUNDDOWN((uint)va);
-  last = (char*)PGROUNDDOWN(((uint)va) + size - 1);
+  last = (char*)PGROUNDDOWN(((uint)va) + size - 1); // last设置为最后一页的起始位置
   for(;;){
     if((pte = walkpgdir(pgdir, a, 1)) == 0)
       return -1;
     if(*pte & PTE_P)
       panic("remap");
     *pte = pa | perm | PTE_P;
-    if(a == last)
+    if(a == last) // 最后一页设置完毕，则退出
       break;
     a += PGSIZE;
     pa += PGSIZE;
@@ -102,6 +102,19 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 
 // This table defines the kernel's mappings, which are present in
 // every process's page table.
+/*
+  系统初始化后物理内存布局：
+  +---------------+
+  | devices       |
+  +---------------+ <-- 224M
+  |               |
+  +---------------+ <-- 4M
+  | kernel text   |
+  | kernel data   |
+  +---------------+ <-- 1M
+  | BIOS          |
+  +---------------+
+*/
 static struct kmap {
   void *virt;
   uint phys_start;
@@ -141,7 +154,7 @@ void
 kvmalloc(void)
 {
   kpgdir = setupkvm();
-  switchkvm();
+  switchkvm(); // 将新的页表写入cr3寄存器
 }
 
 // Switch h/w page table register to the kernel-only page table,

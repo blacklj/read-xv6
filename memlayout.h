@@ -8,6 +8,12 @@
 #define KERNBASE 0x80000000         // First kernel virtual address
 #define KERNLINK (KERNBASE+EXTMEM)  // Address where kernel is linked
 
+/*
+  虚拟地址 = 0x80100000 + 偏移量
+  物理地址 = 0x100000 + 偏移量
+         = 0x100000 + 虚拟地址 - 0x80100000
+         = 虚拟地址 - 0x80000000
+ */
 #define V2P(a) (((uint) (a)) - KERNBASE)
 #define P2V(a) (((void *) (a)) + KERNBASE)
 

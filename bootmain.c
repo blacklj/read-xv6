@@ -22,9 +22,11 @@ bootmain(void)
   void (*entry)(void);
   uchar* pa;
 
+  /* 使用临时的内存地址0x10000存放elf头 */
   elf = (struct elfhdr*)0x10000;  // scratch space
 
   // Read 1st page off disk
+  /* 读取磁盘第一页作为elf文件头 */
   readseg((uchar*)elf, 4096, 0);
 
   // Is this an ELF executable?

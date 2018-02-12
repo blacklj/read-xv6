@@ -9,9 +9,9 @@ SECTIONS
 {
 	/* Link the kernel at this address: "." means the current address */
         /* Must be equal to KERNLINK */
-	. = 0x80100000;
+	. = 0x80100000; /* 内核的虚拟地址起始位置 */
 
-	.text : AT(0x100000) {
+	.text : AT(0x100000) { /* 内核代码段相对于整个映像文件的偏移 */
 		*(.text .stub .text.* .gnu.linkonce.t.*)
 	}
 

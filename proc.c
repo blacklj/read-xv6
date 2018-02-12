@@ -38,10 +38,10 @@ struct cpu*
 mycpu(void)
 {
   int apicid, i;
-  
+
   if(readeflags()&FL_IF)
     panic("mycpu called with interrupts enabled\n");
-  
+
   apicid = lapicid();
   // APIC IDs are not guaranteed to be contiguous. Maybe we should have
   // a reverse map, or reserve a register to store &cpus[i].
@@ -70,6 +70,65 @@ myproc(void) {
 // If found, change state to EMBRYO and initialize
 // state required to run in the kernel.
 // Otherwise return 0.
+/*
+进程的kernel stack初始化状态，
+
+                  /   +---------------+ <-- stack base(= p->kstack + KSTACKSIZE)
+                  |   | ss            |
+                  |   +---------------+
+                  |   | esp           |
+                  |   +---------------+
+                  |   | eflags        |
+                  |   +---------------+
+                  |   | cs            |
+                  |   +---------------+
+                  |   | eip           | <-- 从此往上部分，在iret时自动弹出到相关寄存器中，只需把%esp指到这里即可
+                  |   +---------------+
+                  |   | err           |
+                  |   +---------------+
+                  |   | trapno        |
+                  |   +---------------+
+                  |   | ds            |
+                  |   +---------------+
+                  |   | es            |
+                  |   +---------------+
+                  |   | fs            |
+ struct trapframe |   +---------------+
+                  |   | gs            |
+                  |   +---------------+
+                  |   | eax           |
+                  |   +---------------+
+                  |   | ecx           |
+                  |   +---------------+
+                  |   | edx           |
+                  |   +---------------+
+                  |   | ebx           |
+                  |   +---------------+
+                  |   | oesp          |
+                  |   +---------------+
+                  |   | ebp           |
+                  |   +---------------+
+                  |   | esi           |
+                  |   +---------------+
+                  |   | edi           |
+                  \   +---------------+ <-- p->tf
+                      | trapret       |
+                  /   +---------------+ <-- forkret will return to
+                  |   | eip(=forkret) | <-- return addr
+                  |   +---------------+
+                  |   | ebp           |
+                  |   +---------------+
+   struct context |   | ebx           |
+                  |   +---------------+
+                  |   | esi           |
+                  |   +---------------+
+                  |   | edi           |
+                  \   +-------+-------+ <-- p->context
+                      |       |       |
+                      |       v       |
+                      |     empty     |
+                      +---------------+ <-- p->kstack
+ */
 static struct proc*
 allocproc(void)
 {
@@ -117,6 +176,40 @@ found:
 
 //PAGEBREAK: 32
 // Set up first user process.
+/*
+ init进程的内存布局：
+ +--------------------+ 4GB
+ |                    |
+ |                    |
+ |                    |
+ +--------------------+ KERNBASE+PHYSTOP(2GB+224MB)
+ |                    |
+ |   direct mapped    |
+ |   kernel memory    |
+ |                    |
+ +--------------------+
+ |    Kernel Data     |
+ +--------------------+ data
+ |    Kernel Code     |
+ +--------------------+ KERNLINK(2GB+1MB)
+ |   I/O Space(1MB)   |
+ +--------------------+ KERNBASE(2GB)
+ |                    |
+ |                    |
+ |                    |
+ |                    |
+ |                    |
+ |                    |
+ |                    |
+ |                    |
+ +---------+----------+ PGSIZE <-- %esp
+ |         v          |
+ |       stack        |
+ |                    |
+ |                    |
+ |     initcode.S     |
+ +--------------------+ 0  <-- %eip
+*/
 void
 userinit(void)
 {
@@ -124,7 +217,7 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
   p = allocproc();
-  
+
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -275,7 +368,7 @@ wait(void)
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
-  
+
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for exited children.
@@ -325,7 +418,7 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -351,7 +444,6 @@ scheduler(void)
       c->proc = 0;
     }
     release(&ptable.lock);
-
   }
 }
 
@@ -418,7 +510,7 @@ void
 sleep(void *chan, struct spinlock *lk)
 {
   struct proc *p = myproc();
-  
+
   if(p == 0)
     panic("sleep");
 

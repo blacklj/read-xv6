@@ -20,7 +20,7 @@ struct run {
 struct {
   struct spinlock lock;
   int use_lock;
-  struct run *freelist;
+  struct run *freelist;  // 空闲内存链表
 } kmem;
 
 // Initialization happens in two phases.

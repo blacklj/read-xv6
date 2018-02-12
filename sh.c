@@ -307,6 +307,7 @@ gettoken(char **ps, char *es, char **q, char **eq)
   return ret;
 }
 
+/* 检查指定字符串首个非空字符是否在给定的toks中，并移动字符串指针ps指向第一个非空字符 */
 int
 peek(char **ps, char *es, char *toks)
 {
@@ -446,6 +447,7 @@ parseexec(char **ps, char *es)
 }
 
 // NUL-terminate all the counted strings.
+/* 给每一个命令参数末尾增加结束标志'\0',使之成为字符串 */
 struct cmd*
 nulterminate(struct cmd *cmd)
 {

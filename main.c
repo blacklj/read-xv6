@@ -98,7 +98,13 @@ startothers(void)
 // Page directories (and page tables) must start on page boundaries,
 // hence the __aligned__ attribute.
 // PTE_PS in a page directory entry enables 4Mbyte pages.
-
+/*
+   unsigned int entrypgdir[1024] = {
+      [0] = 0 | 0x001 | 0x002 | 0x080,  // 0x083 = 0000 1000 0011
+      [0x80000000 >> 22] = 0 | 0x001 | 0x002 | 0x080  // 0x083
+   };
+   只初始化了2个页表项，而且两个页表项的内存物理地址都是0~4MB
+*/
 __attribute__((__aligned__(PGSIZE)))
 pde_t entrypgdir[NPDENTRIES] = {
   // Map VA's [0, 4MB) to PA's [0, 4MB)
