@@ -169,7 +169,7 @@ found:
   sp -= sizeof *p->context;
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
-  p->context->eip = (uint)forkret;
+  p->context->eip = (uint)forkret; /* init进程将从forkret处开始执行 */
 
   return p;
 }
@@ -216,20 +216,27 @@ userinit(void)
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
+  /* 分配进程数据结构并初始化 */
   p = allocproc();
 
   initproc = p;
+  /* 创建页目录，将进程的kernel部分页映射进来 */
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
+
+  /* 分配用户空间物理内存, 并映射到虚拟内存的0处 */
   inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
+
   p->sz = PGSIZE;
   memset(p->tf, 0, sizeof(*p->tf));
-  p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
-  p->tf->ds = (SEG_UDATA << 3) | DPL_USER;
+
+  /* 设置初始的用户模式状态 */
+  p->tf->cs = (SEG_UCODE << 3) | DPL_USER; /* cs寄存器指向代码段并处于用户模式 */
+  p->tf->ds = (SEG_UDATA << 3) | DPL_USER; /* ds寄存器指向数据段并处于用户模式 */
   p->tf->es = p->tf->ds;
   p->tf->ss = p->tf->ds;
-  p->tf->eflags = FL_IF;
-  p->tf->esp = PGSIZE;
+  p->tf->eflags = FL_IF; /* 允许硬件中断 */
+  p->tf->esp = PGSIZE; /* 用户栈大小为1页 */
   p->tf->eip = 0;  // beginning of initcode.S
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
@@ -433,7 +440,7 @@ scheduler(void)
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       c->proc = p;
-      switchuvm(p);
+      switchuvm(p); /* 通知硬件开始使用目标进程的页表 */
       p->state = RUNNING;
 
       swtch(&(c->scheduler), p->context);
