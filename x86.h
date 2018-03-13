@@ -159,20 +159,20 @@ struct trapframe {
   uint eax;
 
   // rest of trap frame
-  ushort gs;
+  ushort gs;          /* 全局段寄存器 */
   ushort padding1;
-  ushort fs;
+  ushort fs;          /* 标志段寄存器 */
   ushort padding2;
-  ushort es;
+  ushort es;          /* 扩展段寄存器 */
   ushort padding3;
-  ushort ds;
+  ushort ds;          /* 数据段寄存器 */
   ushort padding4;
   uint trapno;
 
   // below here defined by x86 hardware
   uint err;
   uint eip;
-  ushort cs;
+  ushort cs;          /* 代码段寄存器 */
   ushort padding5;
   uint eflags;
 

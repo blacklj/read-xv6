@@ -24,31 +24,31 @@ extern int ncpu;
 // The layout of the context matches the layout of the stack in swtch.S
 // at the "Switch stacks" comment. Switch doesn't save eip explicitly,
 // but it is on the stack and allocproc() manipulates it.
-struct context {
-  uint edi;
-  uint esi;
-  uint ebx;
-  uint ebp;
-  uint eip;
+struct context { /* 保存上下文切换相关的寄存器 */
+  uint edi;  /* 目的变址寄存器 */
+  uint esi;  /* 源变址寄存器 */
+  uint ebx;  /* 通用数据寄存器 */
+  uint ebp;  /* 基址指针寄存器 */
+  uint eip;  /* 指令寄存器 */
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 // Per-process state
 struct proc {
-  uint sz;                     // Size of process memory (bytes)
-  pde_t* pgdir;                // Page table
+  uint sz;                     // Size of process memory (bytes) 进程内存空间大小
+  pde_t* pgdir;                // Page table 页表地址
   char *kstack;                // Bottom of kernel stack for this process 内核栈底指针
-  enum procstate state;        // Process state
-  int pid;                     // Process ID
-  struct proc *parent;         // Parent process
+  enum procstate state;        // Process state 进程状态
+  int pid;                     // Process ID 进程id
+  struct proc *parent;         // Parent process 父进程
   struct trapframe *tf;        // Trap frame for current syscall
   struct context *context;     // swtch() here to run process
   void *chan;                  // If non-zero, sleeping on chan
   int killed;                  // If non-zero, have been killed
-  struct file *ofile[NOFILE];  // Open files
+  struct file *ofile[NOFILE];  // Open files 打开的文件
   struct inode *cwd;           // Current directory
-  char name[16];               // Process name (debugging)
+  char name[16];               // Process name (debugging) 进程名称
 };
 
 // Process memory is laid out contiguously, low addresses first:

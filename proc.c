@@ -135,31 +135,31 @@ allocproc(void)
   struct proc *p;
   char *sp;
 
-  acquire(&ptable.lock);
+  acquire(&ptable.lock); /* 获取进程表的自旋锁 */
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) /* 从进程表中找到一个UNUSED的进程 */
     if(p->state == UNUSED)
       goto found;
 
-  release(&ptable.lock);
+  release(&ptable.lock); /* 释放自旋锁 */
   return 0;
 
 found:
-  p->state = EMBRYO;
-  p->pid = nextpid++;
+  p->state = EMBRYO;   /* 进程状态置为初始状态 */
+  p->pid = nextpid++;  /* 设置进程id */
 
   release(&ptable.lock);
 
   // Allocate kernel stack.
-  if((p->kstack = kalloc()) == 0){
-    p->state = UNUSED;
+  if((p->kstack = kalloc()) == 0){ /* 从内存链表上分配4096字节的一页内存作为内核栈空间 */
+    p->state = UNUSED; /* 分配失败重置进程状态 */
     return 0;
   }
-  sp = p->kstack + KSTACKSIZE;
+  sp = p->kstack + KSTACKSIZE; /* 将栈顶指针设置为内存高地址处 */
 
   // Leave room for trap frame.
   sp -= sizeof *p->tf;
-  p->tf = (struct trapframe*)sp;
+  p->tf = (struct trapframe*)sp; /* 设置trapframe的栈底指针 */
 
   // Set up new context to start executing at forkret,
   // which returns to trapret.
@@ -167,7 +167,7 @@ found:
   *(uint*)sp = (uint)trapret;
 
   sp -= sizeof *p->context;
-  p->context = (struct context*)sp;
+  p->context = (struct context*)sp; /* 设置进程上下文指针 */
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret; /* init进程将从forkret处开始执行 */
 
