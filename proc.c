@@ -220,7 +220,7 @@ userinit(void)
   p = allocproc();
 
   initproc = p;
-  /* 创建页目录，将进程的kernel部分页映射进来 */
+  /* 创建页表，将进程的kernel部分页映射进来 */
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
 

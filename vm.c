@@ -63,17 +63,17 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
   char *a, *last;
   pte_t *pte;
 
-  a = (char*)PGROUNDDOWN((uint)va);
+  a = (char*)PGROUNDDOWN((uint)va); /* 按PGSIZE向下对其 */
   last = (char*)PGROUNDDOWN(((uint)va) + size - 1); // last设置为最后一页的起始位置
   for(;;){
-    if((pte = walkpgdir(pgdir, a, 1)) == 0)
+    if((pte = walkpgdir(pgdir, a, 1)) == 0) /* 返回a所在的页表项 */
       return -1;
-    if(*pte & PTE_P)
+    if(*pte & PTE_P) /* 页表项已经存在 */
       panic("remap");
-    *pte = pa | perm | PTE_P;
+    *pte = pa | perm | PTE_P; /* 设置页表项指向的物理地址和存取权限 */
     if(a == last) // 最后一页设置完毕，则退出
       break;
-    a += PGSIZE;
+    a += PGSIZE;  /* 按页设置，即一个页表项映射一页 */
     pa += PGSIZE;
   }
   return 0;
@@ -103,17 +103,38 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 // This table defines the kernel's mappings, which are present in
 // every process's page table.
 /*
-  系统初始化后物理内存布局：
-  +---------------+
-  | devices       |
-  +---------------+ <-- 224M
-  |               |
-  +---------------+ <-- 4M
-  | kernel text   |
-  | kernel data   |
-  +---------------+ <-- 1M
-  | BIOS          |
-  +---------------+
+  init进程的内存布局：
+ +--------------------+ 4GB
+ |                    |
+ |                    |
+ |                    |
+ +--------------------+ KERNBASE+PHYSTOP(2GB+224MB)
+ |                    |
+ |   direct mapped    |
+ |   kernel memory    |
+ |                    |
+ +--------------------+
+ |    Kernel Data     |
+ +--------------------+ data
+ |    Kernel Code     |
+ +--------------------+ KERNLINK(2GB+1MB)
+ |   I/O Space(1MB)   |
+ +--------------------+ KERNBASE(2GB)
+ |                    |
+ |                    |
+ |                    |
+ |                    |
+ |                    |
+ |                    |
+ |                    |
+ |                    |
+ +---------+----------+ PGSIZE <-- %esp
+ |         v          |
+ |       stack        |
+ |                    |
+ |                    |
+ |     initcode.S     |
+ +--------------------+ 0  <-- %eip
 */
 static struct kmap {
   void *virt;
@@ -134,12 +155,12 @@ setupkvm(void)
   pde_t *pgdir;
   struct kmap *k;
 
-  if((pgdir = (pde_t*)kalloc()) == 0)
+  if((pgdir = (pde_t*)kalloc()) == 0) /* 分配一页的内存空间 */
     return 0;
   memset(pgdir, 0, PGSIZE);
   if (P2V(PHYSTOP) > (void*)DEVSPACE)
     panic("PHYSTOP too high");
-  for(k = kmap; k < &kmap[NELEM(kmap)]; k++)
+  for(k = kmap; k < &kmap[NELEM(kmap)]; k++) /* 将进程的物理空间映射到进程页表中 */
     if(mappages(pgdir, k->virt, k->phys_end - k->phys_start,
                 (uint)k->phys_start, k->perm) < 0) {
       freevm(pgdir);
